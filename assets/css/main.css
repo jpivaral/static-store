@@ -1,10 +1,10 @@
 /* =============================================
    main.css
    Paleta: blanco limpio / negro / naranja vivo
-   Fuentes: Syne + Manrope
+   Fuente: Inter
    ============================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap');
 
 :root {
   --bg:       #F5F5F3;
@@ -15,8 +15,8 @@
   --muted:    #8A8A86;
   --border:   #E4E4E0;
 
-  --font-h: 'Syne', sans-serif;
-  --font-b: 'Manrope', sans-serif;
+  --font-h: 'Inter', sans-serif;
+  --font-b: 'Inter', sans-serif;
 
   --nav-h:  60px;
   --max-w:  1320px;
@@ -43,9 +43,9 @@ button, input, select, textarea { font-family: var(--font-b); }
 
 /* ---- Typography ---- */
 h1,h2,h3,h4 { font-family: var(--font-h); line-height: 1.1; }
-h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; }
-h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 700; }
-h3 { font-size: 1.15rem; font-weight: 600; }
+h1 { font-size: clamp(1.75rem, 4vw, 2.75rem); font-weight: 700; letter-spacing: -.02em; }
+h2 { font-size: clamp(1.25rem, 2.5vw, 1.9rem); font-weight: 600; letter-spacing: -.015em; }
+h3 { font-size: 1.1rem; font-weight: 600; }
 
 .tag {
   display: inline-block;
@@ -240,27 +240,56 @@ h3 { font-size: 1.15rem; font-weight: 600; }
 .detail__gallery {
   position: sticky; top: calc(var(--nav-h) + 1.5rem);
 }
-.detail__main {
+
+/* Carousel */
+.carousel { position: relative; user-select: none; }
+.carousel__main {
   aspect-ratio: 4/5; overflow: hidden;
   background: var(--surface); box-shadow: var(--shadow-card);
+  margin-bottom: .6rem;
+}
+.carousel__main img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: opacity .25s ease;
+}
+.carousel__btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,.92); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; font-weight: 600; color: var(--dark);
+  box-shadow: 0 2px 8px rgba(12,12,11,.12);
+  transition: background var(--ease), opacity var(--ease);
+  z-index: 2;
+}
+.carousel__btn:hover { background: #fff; }
+.carousel__btn--prev { left: .6rem; }
+.carousel__btn--next { right: .6rem; }
+.carousel__dots {
+  display: flex; justify-content: center; gap: .4rem;
   margin-bottom: .5rem;
 }
-.detail__main img {
-  width: 100%; height: 100%; object-fit: cover;
-  cursor: zoom-in; transition: transform .4s ease;
+.carousel__dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border); border: none; cursor: pointer; padding: 0;
+  transition: background var(--ease), transform var(--ease);
 }
-.detail__main img:hover { transform: scale(1.03); }
-.detail__thumbs {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem;
+.carousel__dot.is-active { background: var(--accent); transform: scale(1.3); }
+.carousel__thumbs {
+  display: flex; gap: .4rem;
+  overflow-x: auto; scroll-snap-type: x mandatory;
+  scrollbar-width: none; padding-bottom: .1rem;
 }
-.detail__thumb {
-  aspect-ratio: 1; overflow: hidden; cursor: pointer;
+.carousel__thumbs::-webkit-scrollbar { display: none; }
+.carousel__thumb {
+  flex: 0 0 64px; aspect-ratio: 1; overflow: hidden; cursor: pointer;
+  scroll-snap-align: start;
   background: var(--surface);
   outline: 2px solid transparent; outline-offset: 1px;
   transition: outline-color var(--ease);
 }
-.detail__thumb.is-active { outline-color: var(--accent); }
-.detail__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.carousel__thumb.is-active { outline-color: var(--accent); }
+.carousel__thumb img { width: 100%; height: 100%; object-fit: cover; }
 
 .detail__info {}
 .detail__cat {
@@ -270,12 +299,13 @@ h3 { font-size: 1.15rem; font-weight: 600; }
   display: flex; align-items: center; gap: .75rem;
 }
 .detail__name {
-  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+  font-weight: 700; letter-spacing: -.02em;
   margin-bottom: .25rem;
 }
 .detail__price {
   font-family: var(--font-h);
-  font-size: 1.9rem; font-weight: 800;
+  font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em;
   color: var(--accent); margin-bottom: 1.75rem;
 }
 .detail__desc {

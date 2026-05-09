@@ -6,7 +6,7 @@
   <title>Producto</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
@@ -65,21 +65,30 @@
       const imgs = p.images?.length ? p.images : [''];
       const ss   = Store.stockStatus(p.stock ?? 0);
 
+      const hasMany = imgs.length > 1;
+
       wrap.innerHTML = `
         <div class="detail">
-          <!-- Gallery -->
+          <!-- Carousel -->
           <div class="detail__gallery">
-            <div class="detail__main">
-              <img id="main-img" src="${imgs[0]}" alt="${p.name}" loading="eager"
-                onerror="this.style.display='none'">
+            <div class="carousel">
+              <div class="carousel__main">
+                <img id="main-img" src="${imgs[0]}" alt="${p.name}" loading="eager"
+                  onerror="this.style.opacity='.2'">
+              </div>
+              ${hasMany ? `
+              <button class="carousel__btn carousel__btn--prev" id="c-prev">&#8249;</button>
+              <button class="carousel__btn carousel__btn--next" id="c-next">&#8250;</button>
+              <div class="carousel__dots">
+                ${imgs.map((_, i) => `<button class="carousel__dot${i === 0 ? ' is-active' : ''}"></button>`).join('')}
+              </div>
+              <div class="carousel__thumbs">
+                ${imgs.map((url, i) => `
+                  <div class="carousel__thumb${i === 0 ? ' is-active' : ''}">
+                    <img src="${url}" alt="${p.name} ${i+1}" loading="lazy">
+                  </div>`).join('')}
+              </div>` : ''}
             </div>
-            ${imgs.length > 1 ? `
-            <div class="detail__thumbs">
-              ${imgs.map((url, i) => `
-                <div class="detail__thumb ${i === 0 ? 'is-active' : ''}" data-url="${url}">
-                  <img src="${url}" alt="${p.name} ${i+1}" loading="lazy">
-                </div>`).join('')}
-            </div>` : ''}
           </div>
 
           <!-- Info -->
@@ -120,14 +129,35 @@
           </div>
         </div>`;
 
-      // Thumbnail switch
-      document.querySelectorAll('.detail__thumb').forEach(t => {
-        t.addEventListener('click', () => {
-          document.getElementById('main-img').src = t.dataset.url;
-          document.querySelectorAll('.detail__thumb').forEach(x => x.classList.remove('is-active'));
-          t.classList.add('is-active');
+      // Carousel logic
+      if (hasMany) {
+        let current = 0;
+        const mainImg   = document.getElementById('main-img');
+        const dots      = [...document.querySelectorAll('.carousel__dot')];
+        const thumbs    = [...document.querySelectorAll('.carousel__thumb')];
+
+        function goTo(i) {
+          current = (i + imgs.length) % imgs.length;
+          mainImg.src = imgs[current];
+          dots.forEach((d, j)  => d.classList.toggle('is-active', j === current));
+          thumbs.forEach((t, j) => t.classList.toggle('is-active', j === current));
+          thumbs[current]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+
+        document.getElementById('c-prev').addEventListener('click', () => goTo(current - 1));
+        document.getElementById('c-next').addEventListener('click', () => goTo(current + 1));
+        dots.forEach((d, i)   => d.addEventListener('click', () => goTo(i)));
+        thumbs.forEach((t, i) => t.addEventListener('click', () => goTo(i)));
+
+        // Swipe support
+        let startX = 0;
+        const track = document.querySelector('.carousel__main');
+        track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+        track.addEventListener('touchend',   e => {
+          const dx = e.changedTouches[0].clientX - startX;
+          if (Math.abs(dx) > 40) goTo(current + (dx < 0 ? 1 : -1));
         });
-      });
+      }
 
       // WhatsApp button — edit phone number below
       const PHONE = '502XXXXXXXX'; // ← cambia por tu número con código de país
