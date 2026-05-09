@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Producto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav__inner">
+      <a href="catalog.html" class="nav__logo"><span>◆</span></a>
+      <div class="nav__right">
+        <a href="catalog.html" class="nav__back">← Catálogo</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <a href="catalog.html">Catálogo</a>
+      <span class="breadcrumb__sep">›</span>
+      <span id="bc-name">—</span>
+    </nav>
+
+    <!-- Detail -->
+    <div id="detail-wrap">
+      <div style="text-align:center;padding:5rem 0;color:var(--muted);">Cargando…</div>
+    </div>
+
+    <!-- Related -->
+    <div id="related-wrap"></div>
+
+  </div>
+
+  <div id="toasts"></div>
+  <script src="assets/js/store.js"></script>
+  <script>
+    (async () => {
+      await ImageDB.open();
+      await Store.init();
+
+      const id = new URLSearchParams(location.search).get('id');
+      const p  = id ? Store.getById(id) : null;
+      const wrap = document.getElementById('detail-wrap');
+
+      if (!p) {
+        wrap.innerHTML = `
+          <div style="text-align:center;padding:5rem 0;">
+            <div style="font-size:2.5rem;color:var(--muted);margin-bottom:1rem;">○</div>
+            <h2>Producto no encontrado</h2>
+            <a href="catalog.html" class="btn btn--outline" style="margin-top:1.5rem;display:inline-flex;">← Volver al catálogo</a>
+          </div>`;
+        return;
+      }
+
+      document.title = p.name;
+      document.getElementById('bc-name').textContent = p.name;
+
+      const imgs = p.images?.length ? p.images : [''];
+      const ss   = Store.stockStatus(p.stock ?? 0);
+
+      wrap.innerHTML = `
+        <div class="detail">
+          <!-- Gallery -->
+          <div class="detail__gallery">
+            <div class="detail__main">
+              <img id="main-img" src="${imgs[0]}" alt="${p.name}" loading="eager"
+                onerror="this.style.display='none'">
+            </div>
+            ${imgs.length > 1 ? `
+            <div class="detail__thumbs">
+              ${imgs.map((url, i) => `
+                <div class="detail__thumb ${i === 0 ? 'is-active' : ''}" data-url="${url}">
+                  <img src="${url}" alt="${p.name} ${i+1}" loading="lazy">
+                </div>`).join('')}
+            </div>` : ''}
+          </div>
+
+          <!-- Info -->
+          <div class="detail__info">
+            <div class="detail__cat">
+              <span>${p.category || ''}</span>
+              ${p.featured ? `<span class="badge badge--feat">Destacado</span>` : ''}
+            </div>
+            <h1 class="detail__name">${p.name}</h1>
+            <div class="detail__price">${Store.formatPrice(p.price)}</div>
+
+            <p class="detail__desc">${p.description || 'Sin descripción.'}</p>
+
+            <div class="detail__meta">
+              <div class="detail__meta-item">
+                <div class="detail__meta-label">Categoría</div>
+                <div class="detail__meta-val">${p.category || '—'}</div>
+              </div>
+              <div class="detail__meta-item">
+                <div class="detail__meta-label">Disponibilidad</div>
+                <div class="detail__meta-val" style="display:flex;align-items:center;gap:.45rem;">
+                  <span class="stock-dot ${ss.cls}"></span> ${ss.label}
+                </div>
+              </div>
+            </div>
+
+            <div class="detail__actions">
+              <button
+                class="btn btn--dark btn--full"
+                id="btn-contact"
+                ${p.stock === 0 ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''}>
+                ${p.stock === 0 ? 'Sin stock disponible' : 'Contactar por WhatsApp'}
+              </button>
+              <a href="catalog.html" class="btn btn--outline btn--full">
+                ← Seguir explorando
+              </a>
+            </div>
+          </div>
+        </div>`;
+
+      // Resolve local images in gallery and thumbnails
+      await resolveLocalImages(document.getElementById('detail-wrap'));
+
+      // Thumbnail switch (uses data-url already resolved by resolveLocalImages)
+      document.querySelectorAll('.detail__thumb').forEach(t => {
+        t.addEventListener('click', () => {
+          document.getElementById('main-img').src = t.dataset.url;
+          document.querySelectorAll('.detail__thumb').forEach(x => x.classList.remove('is-active'));
+          t.classList.add('is-active');
+        });
+      });
+
+      // WhatsApp button — edit phone number below
+      const PHONE = '502XXXXXXXX'; // ← cambia por tu número con código de país
+      document.getElementById('btn-contact')?.addEventListener('click', () => {
+        const msg = `Hola, me interesa el producto *${p.name}* (${Store.formatPrice(p.price)}). ¿Está disponible?`;
+        window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, '_blank');
+      });
+
+      // Related products
+      const related = Store.getByCategory(p.category)
+        .filter(x => x.id !== p.id)
+        .slice(0, 3);
+
+      if (related.length) {
+        const relatedWrap = document.getElementById('related-wrap');
+        relatedWrap.innerHTML = `
+          <div class="related">
+            <div class="related__title">También te puede gustar</div>
+            <div class="products-grid">
+              ${related.map(r => {
+                const img = r.images?.[0] || '';
+                return `
+                  <a href="product.html?id=${r.id}" class="pcard">
+                    <div class="pcard__img">
+                      ${img ? `<img src="${img}" alt="${r.name}" loading="lazy">` : ''}
+                      ${r.featured ? `<div class="pcard__badge">Destacado</div>` : ''}
+                    </div>
+                    <div class="pcard__body">
+                      <div class="pcard__cat">${r.category || ''}</div>
+                      <div class="pcard__name">${r.name}</div>
+                      <div class="pcard__footer">
+                        <div class="pcard__price">${Store.formatPrice(r.price)}</div>
+                        <div class="pcard__btn">→</div>
+                      </div>
+                    </div>
+                  </a>`;
+              }).join('')}
+            </div>
+          </div>`;
+        await resolveLocalImages(relatedWrap);
+      }
+    })();
+  </script>
+</body>
+</html>

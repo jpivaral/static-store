@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo</title>
+  <meta name="description" content="Explora nuestra colección completa de productos.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav__inner">
+      <a href="catalog.html" class="nav__logo"><span>◆</span></a>
+      <div class="nav__right">
+        <a href="admin/index.html" class="nav__link">Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Header + filters -->
+    <div class="cat-header">
+      <h1 class="cat-header__title">Catálogo</h1>
+      <span class="cat-header__count" id="count"></span>
+    </div>
+
+    <div class="filters" id="filters" style="margin-bottom:1.75rem;">
+      <button class="filter-btn is-active" data-cat="todos">Todos</button>
+    </div>
+
+    <!-- Grid -->
+    <div class="products-grid" id="grid">
+      <div class="empty">
+        <div class="empty__icon">○</div>
+        <p>Cargando productos…</p>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toasts"></div>
+  <script src="assets/js/store.js"></script>
+  <script>
+    function card(p) {
+      const img = p.images?.[0] || '';
+      const ss  = Store.stockStatus(p.stock ?? 0);
+      return `
+        <a href="product.html?id=${p.id}" class="pcard">
+          <div class="pcard__img">
+            ${img
+              ? `<img src="${img}" alt="${p.name}" loading="lazy">`
+              : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:var(--muted)">○</div>`}
+            ${p.featured ? `<div class="pcard__badge">Destacado</div>` : ''}
+            ${p.stock === 0 ? `<div class="pcard__badge pcard__badge--stock">Sin stock</div>` : ''}
+          </div>
+          <div class="pcard__body">
+            <div class="pcard__cat">${p.category || ''}</div>
+            <div class="pcard__name">${p.name}</div>
+            <div class="pcard__footer">
+              <div class="pcard__price">${Store.formatPrice(p.price)}</div>
+              <div class="pcard__btn">→</div>
+            </div>
+          </div>
+        </a>`;
+    }
+
+    async function render(cat) {
+      const prods = Store.getByCategory(cat);
+      document.getElementById('count').textContent = `${prods.length} producto${prods.length !== 1 ? 's' : ''}`;
+      document.getElementById('grid').innerHTML = prods.length
+        ? prods.map(card).join('')
+        : `<div class="empty"><div class="empty__icon">○</div><p class="empty__title">Sin productos aquí</p></div>`;
+      document.querySelectorAll('.filter-btn').forEach(b =>
+        b.classList.toggle('is-active', b.dataset.cat === cat));
+      await resolveLocalImages(document.getElementById('grid'));
+    }
+
+    (async () => {
+      await ImageDB.open();
+      await Store.init();
+
+      // Build filter buttons
+      const bar = document.getElementById('filters');
+      bar.querySelector('[data-cat="todos"]').addEventListener('click', () => render('todos'));
+      Store.getCategories().forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.dataset.cat = cat;
+        btn.textContent = cat;
+        btn.addEventListener('click', () => render(cat));
+        bar.appendChild(btn);
+      });
+
+      // Initial render (check URL param)
+      const cat = new URLSearchParams(location.search).get('cat');
+      render(cat && Store.getCategories().includes(cat) ? cat : 'todos');
+    })();
+  </script>
+</body>
+</html>
