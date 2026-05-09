@@ -73,6 +73,8 @@ async function resolveLocalImages(root = document) {
 
 const Store = {
   KEY: 'shop_products',
+
+  /* --- Admin: localStorage ---------------------------------------- */
   async init() {
     if (!localStorage.getItem(this.KEY)) await this.loadFromJSON();
   },
@@ -84,7 +86,20 @@ const Store = {
       localStorage.setItem(this.KEY, JSON.stringify(data));
     } catch { localStorage.setItem(this.KEY, JSON.stringify([])); }
   },
-  getAll()         { return JSON.parse(localStorage.getItem(this.KEY) || '[]'); },
+
+  /* --- Public pages: fetch JSON directly, no localStorage --------- */
+  _mem: null,
+  async fetchJSON() {
+    try {
+      const r = await fetch('/data/products.json');
+      if (!r.ok) throw new Error();
+      return await r.json();
+    } catch { return []; }
+  },
+  fromData(data) { this._mem = data; },
+
+  /* --- Reads: use in-memory if set, otherwise localStorage -------- */
+  getAll()         { return this._mem ?? JSON.parse(localStorage.getItem(this.KEY) || '[]'); },
   getFeatured()    { return this.getAll().filter(p => p.featured); },
   getById(id)      { return this.getAll().find(p => p.id === id) ?? null; },
   getByCategory(c) { return (!c || c === 'todos') ? this.getAll() : this.getAll().filter(p => p.category === c); },

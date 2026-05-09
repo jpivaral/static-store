@@ -67,7 +67,7 @@
         </a>`;
     }
 
-    async function render(cat) {
+    function render(cat) {
       const prods = Store.getByCategory(cat);
       document.getElementById('count').textContent = `${prods.length} producto${prods.length !== 1 ? 's' : ''}`;
       document.getElementById('grid').innerHTML = prods.length
@@ -75,12 +75,10 @@
         : `<div class="empty"><div class="empty__icon">○</div><p class="empty__title">Sin productos aquí</p></div>`;
       document.querySelectorAll('.filter-btn').forEach(b =>
         b.classList.toggle('is-active', b.dataset.cat === cat));
-      await resolveLocalImages(document.getElementById('grid'));
     }
 
     (async () => {
-      await ImageDB.open();
-      await Store.init();
+      Store.fromData(await Store.fetchJSON());
 
       // Build filter buttons
       const bar = document.getElementById('filters');
