@@ -434,7 +434,7 @@ h3 { font-size: 1.15rem; font-weight: 600; }
 .img-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: .5rem; margin-bottom: .75rem; }
 .img-item { aspect-ratio: 1; overflow: hidden; position: relative; background: var(--bg); }
 .img-item img { width: 100%; height: 100%; object-fit: cover; }
-.img-item__rm { position: absolute; top: .25rem; right: .25rem; width: 20px; height: 20px; background: rgba(12,12,11,.8); color: #fff; border: none; cursor: pointer; font-size: .6rem; display: flex; align-items: center; justify-content: center; }
+.img-item__rm { position: absolute; top: .25rem; right: .25rem; width: 20px; height: 20px; background: rgba(12,12,11,.8); color: #fff; border: none; cursor: pointer; font-size: .6rem; display: flex; align-items: center; justify-content: center; z-index: 2; }
 .img-add-row { display: flex; gap: .6rem; }
 .img-add-row .form-input { flex: 1; }
 .img-placeholder { grid-column: 1/-1; padding: .875rem; background: var(--bg); border: 1.5px dashed var(--border); text-align: center; font-size: .78rem; color: var(--muted); }
