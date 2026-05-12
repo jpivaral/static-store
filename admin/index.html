@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — JocPi Store</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/main.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    .upload-zone {
+      border: 2px dashed var(--border);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--ease), background var(--ease);
+      background: var(--bg);
+      margin-bottom: .75rem;
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(232,68,10,.04);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-zone__icon { font-size: 1.4rem; margin-bottom: .3rem; color: var(--muted); }
+    .upload-zone__text { font-size: .78rem; color: var(--muted); font-weight: 500; }
+    .upload-zone__text em { color: var(--accent); font-style: normal; }
+
+    .img-source-tag {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      font-size: .5rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; text-align: center; padding: .15rem;
+    }
+    .img-source-tag.local  { background: var(--accent); color: #fff; }
+    .img-source-tag.remote { background: var(--dark);   color: #fff; }
+
+    .export-guide {
+      background: rgba(232,68,10,.06);
+      border-left: 3px solid var(--accent);
+      padding: .875rem 1.1rem;
+      font-size: .8rem; line-height: 1.75;
+      margin-bottom: 1.5rem;
+    }
+    .export-guide strong { font-weight: 700; }
+    .export-guide code {
+      font-family: monospace;
+      background: rgba(232,68,10,.12);
+      padding: .1rem .35rem; font-size: .75rem;
+    }
+    .step { display: flex; align-items: baseline; gap: .5rem; }
+    .step-n {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent); color: #fff;
+      font-size: .6rem; font-weight: 800; margin-top: .1rem;
+    }
+    .img-count { font-size: .68rem; font-weight: 600; color: var(--muted); margin-left: .5rem; }
+    .img-count em { color: var(--accent); font-style: normal; }
+  </style>
+</head>
+<body>
+<div class="admin-wrap">
+
+  <!-- Sidebar -->
+  <aside class="admin-sb">
+    <div class="admin-sb__logo"><span>◆</span></div>
+    <div class="admin-sb__tag">Administración</div>
+    <ul class="admin-nav">
+      <li><a href="#" class="is-active" id="nav-list" onclick="showView('list');return false;">▦ Productos</a></li>
+      <li><a href="#" id="nav-add"  onclick="showView('form',null);return false;">＋ Nuevo producto</a></li>
+      <li><a href="#" onclick="exportAll();return false;">↓ Exportar ZIP</a></li>
+      <li><a href="#" onclick="syncJSON();return false;">↺ Sincronizar</a></li>
+    </ul>
+    <div class="admin-sb__foot"><a href="../catalog.html" target="_blank">← Ver tienda</a></div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+
+    <!-- ===== LIST ===== -->
+    <div class="view is-active" id="view-list">
+      <div class="admin-topbar">
+        <h1>Productos</h1>
+        <div class="admin-topbar__act">
+          <button class="btn btn--outline btn--sm" onclick="exportAll()">↓ Exportar ZIP</button>
+          <button class="btn btn--dark btn--sm" onclick="showView('form',null)">＋ Nuevo</button>
+        </div>
+      </div>
+
+      <div class="export-guide">
+        <strong>Flujo de publicación</strong><br>
+        <div class="step"><span class="step-n">1</span> Crea productos y sube las fotos aquí abajo.</div>
+        <div class="step"><span class="step-n">2</span> Clic en <strong>Exportar ZIP</strong> → descarga <code>vetrine-export.zip</code>.</div>
+        <div class="step"><span class="step-n">3</span> Descomprime en la raíz del proyecto (sobreescribe archivos).</div>
+        <div class="step"><span class="step-n">4</span> <code>git add . &amp;&amp; git commit -m "update products" &amp;&amp; git push</code></div>
+        <div class="step"><span class="step-n">5</span> Cloudflare Pages redeploya automáticamente. ✓</div>
+      </div>
+
+      <div class="stats-row" id="stats"></div>
+
+      <div class="table-card">
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Img</th><th>Nombre</th><th>Categoría</th>
+                <th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== FORM ===== -->
+    <div class="view" id="view-form">
+      <div class="admin-topbar">
+        <h1 id="form-title">Nuevo producto</h1>
+        <div class="admin-topbar__act">
+          <button class="btn btn--ghost btn--sm" onclick="showView('list')">← Volver</button>
+        </div>
+      </div>
+
+      <div class="form-card">
+
+        <!-- 01 Básico -->
+        <div class="form-sec">
+          <div class="form-sec__title">01 — Información básica</div>
+          <div class="form-group">
+            <label class="form-label" for="f-name">Nombre <span>*</span></label>
+            <input class="form-input" id="f-name" type="text" maxlength="120" placeholder="Ej. Cartera Milano">
+            <span class="form-error" id="err-name">El nombre es obligatorio.</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="f-price">Precio (GTQ) <span>*</span></label>
+              <input class="form-input" id="f-price" type="number" min="0" step="0.01" placeholder="0.00">
+              <span class="form-error" id="err-price">Ingresa un precio válido.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="f-stock">Stock</label>
+              <input class="form-input" id="f-stock" type="number" min="0" step="1" placeholder="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="f-cat">Categoría <span>*</span></label>
+              <input class="form-input" id="f-cat" type="text" list="cat-list" placeholder="Ej. Accesorios">
+              <datalist id="cat-list"></datalist>
+              <span class="form-error" id="err-cat">La categoría es obligatoria.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Destacado en portada</label>
+              <div class="toggle-wrap">
+                <label class="toggle">
+                  <input type="checkbox" id="f-featured">
+                  <div class="toggle__track"></div>
+                  <div class="toggle__thumb"></div>
+                </label>
+                <span class="toggle-lbl" id="feat-lbl">No</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 02 Descripción -->
+        <div class="form-sec">
+          <div class="form-sec__title">02 — Descripción</div>
+          <div class="form-group">
+            <label class="form-label" for="f-desc">Descripción</label>
+            <textarea class="form-textarea" id="f-desc" rows="4"
+              placeholder="Materiales, características, detalles…"></textarea>
+          </div>
+        </div>
+
+        <!-- 03 Imágenes -->
+        <div class="form-sec">
+          <div class="form-sec__title">
+            03 — Imágenes
+            <span class="img-count" id="img-count"></span>
+          </div>
+
+          <!-- Drag & drop / click to upload -->
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="file-input" accept="image/*" multiple>
+            <div class="upload-zone__icon">📁</div>
+            <div class="upload-zone__text">
+              <em>Haz clic o arrastra fotos aquí</em><br>
+              JPG · PNG · WEBP — se guardan en el navegador hasta exportar
+            </div>
+          </div>
+
+          <!-- URL externa -->
+          <div style="margin-bottom:.875rem;">
+            <div class="form-label" style="margin-bottom:.4rem;">O pega una URL externa (Unsplash, CDN…)</div>
+            <div class="img-add-row">
+              <input class="form-input" id="img-url" type="url"
+                placeholder="https://images.unsplash.com/…">
+              <button class="btn btn--outline btn--sm" onclick="addUrl()">Agregar</button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="img-grid" id="img-grid"></div>
+          <p class="form-hint">
+            La <strong>primera imagen</strong> es la principal.
+            Las fotos con etiqueta <strong style="color:var(--accent)">LOCAL</strong>
+            se incluyen en el ZIP al exportar.
+          </p>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button class="btn btn--dark" onclick="save()">Guardar producto</button>
+          <button class="btn btn--outline" onclick="showView('list')">Cancelar</button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+<div id="toasts"></div>
+<script src="../assets/js/store.js"></script>
+<script>
+/* =============================================
+   State
+   ============================================= */
+let editId   = null;
+let imgs     = [];      // array of URL strings
+let blobURLs = [];      // objectURLs to revoke on cleanup
+
+function cleanBlobURLs() {
+  blobURLs.forEach(u => URL.revokeObjectURL(u));
+  blobURLs = [];
+}
+
+async function srcFor(url) {
+  if (!ImageDB.isLocal(url)) return url;
+  const blob = await ImageDB.get(ImageDB.filename(url));
+  if (!blob) return url;                   // ya deployada, usa ruta real
+  const objURL = URL.createObjectURL(blob);
+  blobURLs.push(objURL);
+  return objURL;
+}
+
+/* =============================================
+   Views
+   ============================================= */
+function showView(v, id) {
+  document.querySelectorAll('.view').forEach(x => x.classList.remove('is-active'));
+  document.querySelectorAll('.admin-nav a').forEach(x => x.classList.remove('is-active'));
+  if (v === 'list') {
+    document.getElementById('view-list').classList.add('is-active');
+    document.getElementById('nav-list').classList.add('is-active');
+    renderTable(); renderStats();
+  } else {
+    document.getElementById('view-form').classList.add('is-active');
+    document.getElementById('nav-add').classList.add('is-active');
+    loadForm(id ?? null);
+  }
+}
+
+/* =============================================
+   Table
+   ============================================= */
+async function renderTable() {
+  const prods = Store.getAll();
+  const tbody = document.getElementById('tbody');
+
+  if (!prods.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty">
+      <div class="empty__icon">○</div>
+      <p class="empty__title">Sin productos</p>
+      <button class="btn btn--dark btn--sm" style="margin-top:1rem"
+        onclick="showView('form',null)">Agregar primero</button>
+    </div></td></tr>`;
+    return;
+  }
+
+  const rows = await Promise.all(prods.map(async p => {
+    const ss = Store.stockStatus(p.stock ?? 0);
+    const bc = ss.cls === 'ok' ? 'badge--ok' : ss.cls === 'low' ? 'badge--low' : 'badge--out';
+    let imgHtml = `<div class="tbl-img-ph">○</div>`;
+    if (p.images?.[0]) {
+      const src = await srcFor(p.images[0]);
+      imgHtml = `<img class="tbl-img" src="${src}" alt="">`;
+    }
+    return `<tr>
+      <td>${imgHtml}</td>
+      <td><div class="tbl-name">${p.name}</div></td>
+      <td>${p.category || '—'}</td>
+      <td>${Store.formatPrice(p.price)}</td>
+      <td><span class="badge ${bc}">${p.stock ?? 0}</span></td>
+      <td>${p.featured ? `<span class="badge badge--feat">Destacado</span>` : '—'}</td>
+      <td><div class="tbl-act">
+        <button class="btn btn--outline btn--sm"
+          onclick="showView('form','${p.id}')">Editar</button>
+        <button class="btn btn--outline btn--sm"
+          onclick="duplicate('${p.id}')">Duplicar</button>
+        <button class="btn btn--outline btn--sm"
+          style="color:var(--accent);border-color:var(--accent)"
+          onclick="del('${p.id}','${p.name.replace(/'/g,"\\'")}')">Eliminar</button>
+        <a href="../product.html?id=${p.id}" target="_blank"
+          class="btn btn--ghost btn--sm">Ver →</a>
+      </div></td>
+    </tr>`;
+  }));
+  tbody.innerHTML = rows.join('');
+}
+
+async function renderStats() {
+  const p = Store.getAll();
+  const localCount = (await ImageDB.getAll()).length;
+  document.getElementById('stats').innerHTML = [
+    { n: p.length,                                l: 'Productos',     i: '▦' },
+    { n: Store.getCategories().length,             l: 'Categorías',    i: '◈' },
+    { n: p.filter(x => x.featured).length,        l: 'Destacados',    i: '★' },
+    { n: localCount,                              l: 'Fotos locales', i: '📁' },
+  ].map(s => `<div class="stat-card">
+    <div style="font-size:1.2rem;margin-bottom:.2rem;">${s.i}</div>
+    <div class="stat-card__num">${s.n}</div>
+    <div class="stat-card__label">${s.l}</div>
+  </div>`).join('');
+}
+
+/* =============================================
+   Form
+   ============================================= */
+async function loadForm(id) {
+  cleanBlobURLs();
+  editId = id; imgs = [];
+  document.getElementById('form-title').textContent = id ? 'Editar producto' : 'Nuevo producto';
+  document.querySelectorAll('.form-error').forEach(e => e.classList.remove('show'));
+  document.querySelectorAll('.is-err').forEach(e => e.classList.remove('is-err'));
+  document.getElementById('cat-list').innerHTML =
+    Store.getCategories().map(c => `<option value="${c}">`).join('');
+
+  if (id) {
+    const p = Store.getById(id);
+    if (!p) { showView('list'); return; }
+    document.getElementById('f-name').value    = p.name  || '';
+    document.getElementById('f-price').value   = p.price ?? '';
+    document.getElementById('f-stock').value   = p.stock ?? 0;
+    document.getElementById('f-cat').value     = p.category || '';
+    document.getElementById('f-desc').value    = p.description || '';
+    document.getElementById('f-featured').checked = !!p.featured;
+    imgs = [...(p.images || [])];
+  } else {
+    ['f-name','f-price','f-cat','f-desc'].forEach(i =>
+      document.getElementById(i).value = '');
+    document.getElementById('f-stock').value = 0;
+    document.getElementById('f-featured').checked = false;
+  }
+  updFeatLbl();
+  await renderImgs();
+}
+
+document.getElementById('f-featured').addEventListener('change', updFeatLbl);
+function updFeatLbl() {
+  document.getElementById('feat-lbl').textContent =
+    document.getElementById('f-featured').checked ? 'Sí' : 'No';
+}
+
+/* ---- File input ---- */
+document.getElementById('file-input').addEventListener('change', async e => {
+  await handleFiles(e.target.files);
+  e.target.value = '';
+});
+
+/* ---- Drag & drop ---- */
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', ()  => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', async e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  await handleFiles(e.dataTransfer.files);
+});
+
+async function handleFiles(list) {
+  const ok = ['image/jpeg','image/png','image/webp','image/gif','image/avif'];
+  let added = 0;
+  for (const file of list) {
+    if (!ok.includes(file.type)) continue;
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const base = file.name.replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]/gi,'-').toLowerCase();
+    const name = `${Date.now()}-${base}.${ext}`;
+    await ImageDB.save(name, file);
+    imgs.push(`/assets/images/${name}`);
+    added++;
+  }
+  if (added) showToast(`${added} foto${added > 1 ? 's' : ''} agregada${added > 1 ? 's' : ''}.`);
+  cleanBlobURLs();
+  await renderImgs();
+}
+
+/* ---- URL externa ---- */
+document.getElementById('img-url').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addUrl(); }
+});
+function addUrl() {
+  const v = document.getElementById('img-url').value.trim();
+  if (!v || !v.startsWith('http')) { showToast('URL inválida.', 'error'); return; }
+  imgs.push(v);
+  document.getElementById('img-url').value = '';
+  cleanBlobURLs();
+  renderImgs();
+}
+
+async function rmImg(i) {
+  const url = imgs[i];
+  if (ImageDB.isLocal(url)) await ImageDB.delete(ImageDB.filename(url));
+  imgs.splice(i, 1);
+  cleanBlobURLs();
+  await renderImgs();
+}
+
+async function renderImgs() {
+  const grid  = document.getElementById('img-grid');
+  const count = document.getElementById('img-count');
+  const local = imgs.filter(ImageDB.isLocal).length;
+  const total = imgs.length;
+
+  count.innerHTML = total
+    ? `${total} imagen${total > 1 ? 'es' : ''} · <em>${local} local${local !== 1 ? 'es' : ''}</em>`
+    : '';
+
+  if (!total) {
+    grid.innerHTML = `<div class="img-placeholder">Sin imágenes todavía.</div>`;
+    return;
+  }
+
+  const items = await Promise.all(imgs.map(async (url, i) => {
+    const isLocal = ImageDB.isLocal(url);
+    const src = await srcFor(url);
+    const tag = isLocal
+      ? `<div class="img-source-tag local">Local</div>`
+      : `<div class="img-source-tag remote">URL</div>`;
+    const crown = i === 0
+      ? `<div style="position:absolute;top:0;left:0;right:0;background:var(--accent);
+           color:#fff;font-size:.5rem;font-weight:800;letter-spacing:.08em;
+           text-align:center;padding:.15rem;">PRINCIPAL</div>`
+      : '';
+    return `<div class="img-item">
+      <img src="${src}" alt="" loading="lazy" onerror="this.style.opacity='.2'">
+      <button class="img-item__rm" onclick="rmImg(${i})" title="Quitar">✕</button>
+      ${crown}${tag}
+    </div>`;
+  }));
+  grid.innerHTML = items.join('');
+}
+
+/* =============================================
+   Save / Delete
+   ============================================= */
+function save() {
+  let ok = true;
+  const name  = document.getElementById('f-name').value.trim();
+  const price = parseFloat(document.getElementById('f-price').value);
+  const stock = parseInt(document.getElementById('f-stock').value, 10);
+  const cat   = document.getElementById('f-cat').value.trim();
+  const desc  = document.getElementById('f-desc').value.trim();
+  const feat  = document.getElementById('f-featured').checked;
+
+  const setErr = (field, errId, cond) => {
+    document.getElementById(errId).classList.toggle('show', cond);
+    document.getElementById(field).classList.toggle('is-err', cond);
+    if (cond) ok = false;
+  };
+  setErr('f-name',  'err-name',  !name);
+  setErr('f-price', 'err-price', !price || price <= 0 || isNaN(price));
+  setErr('f-cat',   'err-cat',   !cat);
+  if (!ok) return;
+
+  Store.save({ id: editId||null, name, price,
+    stock: isNaN(stock) ? 0 : stock,
+    category: cat, description: desc,
+    featured: feat, images: [...imgs] });
+  showToast(`"${name}" ${editId ? 'actualizado' : 'creado'}.`);
+  showView('list');
+}
+
+async function duplicate(id) {
+  const p = Store.getById(id);
+  if (!p) return;
+
+  const newImages = [];
+  for (const url of (p.images || [])) {
+    if (ImageDB.isLocal(url)) {
+      const blob = await ImageDB.get(ImageDB.filename(url));
+      if (blob) {
+        const ext  = url.split('.').pop();
+        const base = ImageDB.filename(url).replace(/\.[^.]+$/, '').replace(/^\d+-/, '');
+        const name = `${Date.now()}-${base}.${ext}`;
+        await ImageDB.save(name, blob);
+        newImages.push(`/assets/images/${name}`);
+      }
+    } else {
+      newImages.push(url);
+    }
+  }
+
+  const copy = { ...p, id: null, name: `Copia de ${p.name}`, images: newImages };
+  const saved = Store.save(copy);
+  showToast(`"${saved.name}" creado.`);
+  renderTable(); renderStats();
+}
+
+async function del(id, name) {
+  if (!confirm(`¿Eliminar "${name}"?`)) return;
+  const p = Store.getById(id);
+  if (p?.images) {
+    for (const url of p.images)
+      if (ImageDB.isLocal(url)) await ImageDB.delete(ImageDB.filename(url));
+  }
+  Store.delete(id);
+  showToast(`"${name}" eliminado.`);
+  renderTable(); renderStats();
+}
+
+/* =============================================
+   Export ZIP
+   ============================================= */
+async function exportAll() {
+  showToast('Generando ZIP…');
+  try {
+    const zip    = new JSZip();
+    const images = await ImageDB.getAll();
+
+    // products.json
+    zip.file('data/products.json', JSON.stringify(Store.getAll(), null, 2));
+
+    // assets/images/*
+    if (images.length) {
+      const folder = zip.folder('assets/images');
+      for (const { name, blob } of images) folder.file(name, blob);
+    }
+
+    const blob = await zip.generateAsync({
+      type: 'blob', compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: 'vetrine-export.zip'
+    });
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast(`ZIP listo — ${images.length} foto${images.length !== 1 ? 's' : ''} + products.json`);
+  } catch (e) {
+    console.error(e);
+    showToast('Error al generar ZIP.', 'error');
+  }
+}
+
+/* =============================================
+   Sync
+   ============================================= */
+async function syncJSON() {
+  if (!confirm('¿Recargar products.json del servidor?\nSe perderán cambios no exportados.')) return;
+  localStorage.removeItem(Store.KEY);
+  await Store.loadFromJSON();
+  showToast('Sincronizado.');
+  if (document.getElementById('view-list').classList.contains('is-active'))
+    renderTable(), renderStats();
+}
+
+/* =============================================
+   Init
+   ============================================= */
+(async () => {
+  await ImageDB.open();
+  await Store.init();
+  renderTable();
+  renderStats();
+})();
+</script>
+</body>
+</html>
